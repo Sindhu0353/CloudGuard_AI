@@ -1,0 +1,29 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Mixed Secure and Insecure Configurations",
+  "Resources": {
+    "SecureDataBucket": {
+      "Type": "AWS::S3::Bucket",
+      "AssetImportance": 70,
+      "Properties": {
+        "AccessControl": "Private",
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "PublicWebsiteBucket": {
+      "Type": "AWS::S3::Bucket",
+      "AssetImportance": 60,
+      "Properties": {
+        "AccessControl": "PublicRead"
+      }
+    }
+  }
+}

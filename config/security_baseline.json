@@ -1,0 +1,99 @@
+{
+  "version": "1.1.0",
+  "description": "CloudGuard AI Security Baseline Rules for AWS CloudFormation and Generic Cloud Templates",
+  "metadata": {
+    "framework_references": [
+      {
+        "name": "AWS Well-Architected Framework",
+        "pillar": "Security Pillar",
+        "url": "https://aws.amazon.com/architecture/wellarchitected/"
+      },
+      {
+        "name": "CIS Amazon Web Services Foundations Benchmark",
+        "version": "v3.0.0",
+        "url": "https://www.cisecurity.org/benchmark/amazon_web_services"
+      },
+      {
+        "name": "NIST Cybersecurity Framework (CSF 2.0)",
+        "functions": ["PROTECT (PR.AA)", "DETECT (DE.CM)"],
+        "url": "https://www.nist.gov/cyberframework"
+      }
+    ]
+  },
+  "rules": [
+    {
+      "id": "CG-AWS-S3-001",
+      "name": "S3 Bucket Public Read/Write Access",
+      "applicable_types": ["AWS::S3::Bucket", "storage_bucket"],
+      "property_path": "AccessControl",
+      "disallowed_values": ["PublicRead", "PublicReadWrite", "public-read", "public-read-write"],
+      "expected_state": "Private or AuthenticatedRead",
+      "severity": 90,
+      "explanation": "The storage bucket allows public read or write access from the open internet, creating a critical risk of data exfiltration or unauthorized overwrites.",
+      "remediation": "Set AccessControl to 'Private' or configure strict BucketPolicy and PublicAccessBlock rules.",
+      "source_reference": "CIS AWS Foundations Benchmark v3.0.0 Control 2.1.1 / NIST CSF PR.AA-01"
+    },
+    {
+      "id": "CG-AWS-S3-002",
+      "name": "S3 Storage Encryption Disabled",
+      "applicable_types": ["AWS::S3::Bucket", "storage_bucket"],
+      "property_path": "BucketEncryption",
+      "check_type": "presence",
+      "expected_state": "BucketEncryption property must be configured with SSE-S3 or KMS key encryption.",
+      "severity": 80,
+      "explanation": "Data stored in this bucket is not encrypted at rest, leaving sensitive data exposed if underlying storage media is accessed.",
+      "remediation": "Enable default server-side encryption using AES256 or AWS KMS in BucketEncryption configuration.",
+      "source_reference": "AWS Well-Architected Security Pillar SEC-06 / CIS AWS Control 2.1.2"
+    },
+    {
+      "id": "CG-AWS-EC2-001",
+      "name": "Unrestricted SSH Access (0.0.0.0/0)",
+      "applicable_types": ["AWS::EC2::SecurityGroup", "network_security_group"],
+      "property_path": "SecurityGroupIngress",
+      "check_type": "open_port",
+      "target_port": 22,
+      "disallowed_cidr": "0.0.0.0/0",
+      "expected_state": "Port 22 should be restricted to specific trusted CIDR IP ranges (e.g. 10.0.0.0/8 or specific jump host IP).",
+      "severity": 85,
+      "explanation": "SSH port 22 is open to the entire internet (0.0.0.0/0), exposing virtual machines to automated brute-force attacks.",
+      "remediation": "Restrict Ingress CIDR IP range for port 22 to specific corporate IP addresses or remove port 22 in favor of AWS SSM Systems Manager.",
+      "source_reference": "CIS AWS Foundations Benchmark v3.0.0 Control 5.2 / NIST CSF PR.AC-05"
+    },
+    {
+      "id": "CG-AWS-IAM-001",
+      "name": "Overly Permissive IAM Policy (Wildcard Administrator Access)",
+      "applicable_types": ["AWS::IAM::Policy", "AWS::IAM::Role", "iam_policy"],
+      "property_path": "PolicyDocument",
+      "check_type": "iam_wildcard",
+      "expected_state": "IAM policies must adhere to the Least Privilege principle with explicit resource and action definitions.",
+      "severity": 95,
+      "explanation": "Policy contains 'Action: *' combined with 'Resource: *', granting full unrestricted administrative privileges across the entire cloud account.",
+      "remediation": "Replace wildcard permissions with specific API actions (e.g. s3:GetObject) and target resource ARNs.",
+      "source_reference": "AWS Well-Architected Security Pillar SEC-03 / CIS AWS Control 1.16"
+    },
+    {
+      "id": "CG-AWS-RDS-001",
+      "name": "Publicly Accessible Database Instance",
+      "applicable_types": ["AWS::RDS::DBInstance", "database_instance"],
+      "property_path": "PubliclyAccessible",
+      "disallowed_values": [true, "true", "True"],
+      "expected_state": "PubliclyAccessible set to false",
+      "severity": 90,
+      "explanation": "The database instance is directly reachable over the public internet, exposing backend data stores to external network probes and zero-day database exploits.",
+      "remediation": "Set PubliclyAccessible to false and place DB instances inside private subnets without public IP assignments.",
+      "source_reference": "CIS AWS Foundations Benchmark v3.0.0 Control 2.3.1 / NIST CSF PR.AA-05"
+    },
+    {
+      "id": "CG-GEN-LOG-001",
+      "name": "Logging and Monitoring Disabled",
+      "applicable_types": ["AWS::S3::Bucket", "AWS::RDS::DBInstance", "storage_bucket", "database_instance"],
+      "property_path": "LoggingEnabled",
+      "check_type": "boolean_true",
+      "expected_state": "LoggingEnabled set to true or LoggingConfiguration present.",
+      "severity": 50,
+      "explanation": "Access logging or audit trails are disabled, severely obstructing forensic analysis and breach incident response.",
+      "remediation": "Enable access logging and direct telemetry logs to a centralized log management tool or CloudWatch.",
+      "source_reference": "NIST CSF DETECT DE.CM-01 / CIS AWS Control 3.1"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Insecure Cloud Infrastructure Example",
+  "Resources": {
+    "PublicBucket": {
+      "Type": "AWS::S3::Bucket",
+      "AssetImportance": 90,
+      "Properties": {
+        "AccessControl": "PublicRead"
+      }
+    },
+    "InsecureSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "AssetImportance": 80,
+      "Properties": {
+        "GroupDescription": "Allow SSH from anywhere",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 22,
+            "ToPort": 22,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "AdminRole": {
+      "Type": "AWS::IAM::Role",
+      "AssetImportance": 100,
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": "*",
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "PublicDB": {
+      "Type": "AWS::RDS::DBInstance",
+      "AssetImportance": 85,
+      "Properties": {
+        "PubliclyAccessible": true,
+        "Engine": "mysql"
+      }
+    }
+  }
+}

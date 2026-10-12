@@ -1,0 +1,47 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Fully Compliant Secure Infrastructure",
+  "Resources": {
+    "SecureBucket": {
+      "Type": "AWS::S3::Bucket",
+      "AssetImportance": 80,
+      "Properties": {
+        "AccessControl": "Private",
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "LoggingEnabled": true
+      }
+    },
+    "RestrictedSG": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "AssetImportance": 70,
+      "Properties": {
+        "GroupDescription": "Restricted SSH to Internal CIDR",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 22,
+            "ToPort": 22,
+            "CidrIp": "10.0.0.0/8"
+          }
+        ]
+      }
+    },
+    "PrivateDB": {
+      "Type": "AWS::RDS::DBInstance",
+      "AssetImportance": 90,
+      "Properties": {
+        "PubliclyAccessible": false,
+        "Engine": "postgres",
+        "LoggingEnabled": true
+      }
+    }
+  }
+}

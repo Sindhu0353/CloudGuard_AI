@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudGuard AI | Autonomous Cloud Security Advisor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="navbar">
+        <div class="logo">
+            <span class="shield-icon">🛡️</span>
+            <h1>CloudGuard <span>AI</span></h1>
+        </div>
+        <div class="nav-actions">
+            <button id="viewBaselineHeaderBtn" class="btn btn-secondary">View Security Baseline</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Upload & Controls Section -->
+        <section class="upload-section card">
+            <h2>Cloud Template Scanner</h2>
+            <p>Upload an AWS CloudFormation or Generic Cloud Configuration JSON file for security baseline validation.</p>
+            
+            <div class="drop-zone" id="dropZone">
+                <input type="file" id="fileInput" accept=".json" hidden>
+                <div class="upload-icon">📄</div>
+                <p>Drag & drop your JSON template here, or <button type="button" class="btn-link" id="browseBtn">browse file</button></p>
+                <span class="file-name" id="selectedFileName">No file chosen</span>
+            </div>
+
+            <div class="action-bar">
+                <button id="scanBtn" class="btn btn-primary" disabled>Start Security Scan</button>
+            </div>
+            
+            <div id="alertBox" class="alert hidden"></div>
+        </section>
+
+        <!-- Dynamic Results Container -->
+        <div id="resultsContainer" class="hidden">
+            <!-- Executive Metrics Row -->
+            <section class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Resources Analyzed</h3>
+                    <div class="metric-value" id="resAnalyzedCount">0</div>
+                    <div class="metric-sub" id="detectedFormat">Format: -</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Findings</h3>
+                    <div class="metric-value" id="totalFindingsCount">0</div>
+                    <div class="metric-sub">Misconfigurations</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Overall Risk Score</h3>
+                    <div class="metric-value" id="overallRiskScore">0.0</div>
+                    <div class="metric-sub">Out of 100</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Risk Breakdown</h3>
+                    <div class="severity-pills">
+                        <span class="pill pill-critical" id="cntCritical">Critical: 0</span>
+                        <span class="pill pill-high" id="cntHigh">High: 0</span>
+                        <span class="pill pill-medium" id="cntMedium">Medium: 0</span>
+                        <span class="pill pill-low" id="cntLow">Low: 0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Export & Action Header -->
+            <div class="section-header">
+                <h2>Security Findings & Remediation Guidance</h2>
+                <div class="export-buttons">
+                    <button id="downloadHtmlBtn" class="btn btn-secondary">Download HTML Report</button>
+                    <button id="downloadJsonBtn" class="btn btn-secondary">Download JSON Report</button>
+                </div>
+            </div>
+
+            <!-- Findings Table -->
+            <section class="card table-card">
+                <div class="table-wrapper">
+                    <table class="findings-table">
+                        <thead>
+                            <tr>
+                                <th>Resource ID & Type</th>
+                                <th>Rule ID & Title</th>
+                                <th>Risk Score</th>
+                                <th>Observed Config</th>
+                                <th>Explanation</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="findingsTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- How Security Scanning Works Section -->
+        <section class="card methodology-card">
+            <h2>How Security Scanning Works</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                Transparent static configuration comparison process using standard baseline rules.
+            </p>
+            <div class="workflow-steps">
+                <div class="step-box"><span>1</span><p><strong>Upload Template</strong><br><small>User provides cloud JSON file</small></p></div>
+                <div class="step-box"><span>2</span><p><strong>Validate Format</strong><br><small>Detects AWS CFN or Generic JSON</small></p></div>
+                <div class="step-box"><span>3</span><p><strong>Extract Resources</strong><br><small>Identifies types & attributes</small></p></div>
+                <div class="step-box"><span>4</span><p><strong>Load Baseline</strong><br><small>Reads rules from baseline file</small></p></div>
+                <div class="step-box"><span>5</span><p><strong>Compare Config</strong><br><small>Evaluates properties vs expected</small></p></div>
+                <div class="step-box"><span>6</span><p><strong>Compute Risk Score</strong><br><small>Severity × Asset Importance / 100</small></p></div>
+                <div class="step-box"><span>7</span><p><strong>Display Dashboard</strong><br><small>Presents evidence & remediation</small></p></div>
+            </div>
+        </section>
+
+        <!-- Transparent Security Baseline Display Section -->
+        <section class="card baseline-section" id="baselineSection">
+            <div class="section-header">
+                <h2>Security Baseline Management</h2>
+                <button id="toggleBaselineBtn" class="btn btn-primary">Hide Baseline Controls</button>
+            </div>
+            
+            <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                Direct inspection of active rules configured in <code>config/security_baseline.json</code>.
+            </p>
+
+            <div class="filter-bar">
+                <input type="text" id="baselineSearchInput" placeholder="Search rules by ID, name or resource type..." class="input-field">
+                <select id="severityFilter" class="select-field">
+                    <option value="ALL" selected>All Severities</option>
+                    <option value="CRITICAL">Critical (≥80)</option>
+                    <option value="HIGH">High (60-79)</option>
+                    <option value="MEDIUM">Medium (35-59)</option>
+                    <option value="LOW">Low (&lt;35)</option>
+                </select>
+            </div>
+
+            <div class="table-wrapper" style="margin-top: 15px;">
+                <table class="baseline-table">
+                    <thead>
+                        <tr>
+                            <th>Rule ID</th>
+                            <th>Rule Name</th>
+                            <th>Applicable Resource Types</th>
+                            <th>Property Path</th>
+                            <th>Expected Secure State</th>
+                            <th>Severity</th>
+                            <th>Source Reference</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="baselineTableBody">
+                        <!-- Populated dynamically from /api/baseline -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Baseline Sources & Methodology -->
+            <div class="methodology-box">
+                <h3>Baseline Sources & Methodology</h3>
+                <p>
+                    Security rules defined in CloudGuard AI are modeled with reference to established cloud security standards, including:
+                </p>
+                <ul>
+                    <li><strong>AWS Well-Architected Framework:</strong> Security Pillar controls for identity, data protection, and incident response.</li>
+                    <li><strong>CIS Amazon Web Services Foundations Benchmark:</strong> Industry standard security hardening guidelines.</li>
+                    <li><strong>NIST Cybersecurity Framework (CSF 2.0):</strong> Structural guidelines for asset protection and continuous monitoring.</li>
+                </ul>
+                <p><small><em>Note: Rule evaluations are static checks performed against local configuration JSON templates and do not constitute formal compliance certification.</em></small></p>
+            </div>
+        </section>
+
+        <!-- Audit History Section -->
+        <section class="card history-section">
+            <h2>Recent Scan History</h2>
+            <div class="table-wrapper">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Scan ID</th>
+                            <th>Timestamp</th>
+                            <th>Filename</th>
+                            <th>Format</th>
+                            <th>Resources</th>
+                            <th>Findings</th>
+                            <th>Risk Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Remediation Simulation Modal -->
+    <div id="remediationModal" class="modal hidden">
+        <div class="modal-content card">
+            <div class="modal-header">
+                <h3>Safe Local Remediation Simulation</h3>
+                <button class="close-btn" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="remediationMessage" class="modal-msg">Reviewing fix for resource...</p>
+                <div class="diff-container">
+                    <div class="diff-box">
+                        <h4>Original Configuration (ReadOnly)</h4>
+                        <pre id="originalConfigPre"></pre>
+                    </div>
+                    <div class="diff-box">
+                        <h4>Remediated Configuration Copy</h4>
+                        <pre id="remediatedConfigPre"></pre>
+                    </div>
+                </div>
+                <div id="postScanNotice" class="alert alert-success hidden"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmRemediateBtn" class="btn btn-primary">Simulate Remediation Copy</button>
+                <button id="dismissModalBtn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rule Details Modal -->
+    <div id="ruleDetailModal" class="modal hidden">
+        <div class="modal-content card" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 id="modalRuleTitle">Baseline Rule Specification</h3>
+                <button class="close-btn" id="closeRuleModalBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="modalRuleContent">
+                <!-- Dynamically rendered rule properties -->
+            </div>
+            <div class="modal-footer">
+                <button id="dismissRuleModalBtn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

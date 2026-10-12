@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "environment": "staging",
+  "resources": [
+    {
+      "id": "gen_storage_01",
+      "type": "storage_bucket",
+      "asset_importance": 85,
+      "properties": {
+        "access_control": "public-read",
+        "encryption": {
+          "enabled": false
+        },
+        "logging_enabled": false
+      }
+    },
+    {
+      "id": "gen_database_01",
+      "type": "database_instance",
+      "asset_importance": 90,
+      "properties": {
+        "publicly_accessible": false,
+        "logging_enabled": true
+      }
+    }
+  ]
+}
