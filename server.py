@@ -11,8 +11,9 @@ from core.remediation import RemediationSimulator
 from core.database import DatabaseManager
 from core.reports import ReportGenerator
 
-PORT = 8000
-WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+PORT = int(os.environ.get("PORT", 8000))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WEB_DIR = os.path.join(BASE_DIR, "web")
 
 scanner = CloudScanner()
 db_manager = DatabaseManager()
@@ -183,9 +184,65 @@ class CloudGuardRequestHandler(http.server.SimpleHTTPRequestHandler):
 
         self._send_json({"success": False, "error": "Endpoint not found"}, status_code=404)
 
+
+# WSGI Adaptor Callable for Serverless execution (Vercel)
+from io import BytesIO
+
+def app(environ, start_response):
+    class WSGIRequestWrapper:
+        def __init__(self, environ):
+            self.environ = environ
+            self.rfile = environ['wsgi.input']
+            self.wfile = BytesIO()
+            self.headers = {
+                'Content-Length': environ.get('CONTENT_LENGTH', '0'),
+                'Content-Type': environ.get('CONTENT_TYPE', '')
+            }
+            self.command = environ['REQUEST_METHOD']
+            self.path = environ.get('PATH_INFO', '')
+            if environ.get('QUERY_STRING'):
+                self.path += '?' + environ['QUERY_STRING']
+            self.request_version = 'HTTP/1.1'
+            self.status_code = 200
+            self.response_headers = []
+
+        def send_response(self, code, message=None):
+            self.status_code = code
+
+        def send_header(self, keyword, value):
+            self.response_headers.append((keyword, value))
+
+        def end_headers(self):
+            pass
+
+    req = WSGIRequestWrapper(environ)
+    handler = CloudGuardRequestHandler.__new__(CloudGuardRequestHandler)
+    handler.rfile = req.rfile
+    handler.wfile = req.wfile
+    handler.headers = req.headers
+    handler.command = req.command
+    handler.path = req.path
+    handler.request_version = req.request_version
+    handler.send_response = req.send_response
+    handler.send_header = req.send_header
+    handler.end_headers = req.end_headers
+
+    if req.command == 'GET':
+        handler.do_GET()
+    elif req.command == 'POST':
+        handler.do_POST()
+    elif req.command == 'OPTIONS':
+        handler.do_OPTIONS()
+
+    status_str = f"{req.status_code} OK" if req.status_code == 200 else f"{req.status_code} Error"
+    start_response(status_str, req.response_headers)
+    return [req.wfile.getvalue()]
+
+
 def run_server():
     os.chdir(WEB_DIR)
-    with socketserver.TCPServer(("", PORT), CloudGuardRequestHandler) as httpd:
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer(("0.0.0.0", PORT), CloudGuardRequestHandler) as httpd:
         print(f"CloudGuard AI Server initialized at http://localhost:{PORT}")
         print("Press Ctrl+C to stop the server.")
         try:
